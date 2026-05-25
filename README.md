@@ -1,4 +1,4 @@
-# Model-Based and Learning-Based Pursuit-Evasion Control: A Benchmark Comparison of Linear-Quadratic Game Theory and Deep Reinforcement Learning
+# Model-Based and Q-Learning-Based Pursuit-Evasion Control of Autonomous Ground Vehicles Using QCar-Compatible State-Space Models
 
 A portfolio of code, experiments, and documentation for my MSc Thesis at Tennessee Tech University. My research sits at the intersection of optimal control, game-theoretic multi-agent systems, and reinforcement learning, with applications to pursuit–evasion and autonomous vehicles.
 
