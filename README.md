@@ -1,4 +1,4 @@
-# Disturbance-Aware Model-Based and Model-Free Algorithms for Discrete-Time Zero-Sum Pursuit-Evasion Games
+# Disturbance-Aware Model-Based and Model-Free Zero-Sum Pursuit-Evasion Control: Theory, Algorithm Development, and MATLAB Validation
 
 > **Project Status:** Active Master of Science thesis project at Tennessee Technological University. This repository contains the reproducible MATLAB implementation, simulation studies, literature documentation, and supporting materials developed for the thesis. The final defended thesis, archival citation, and approved publication links will be added after institutional submission and approval.
 
