@@ -1,4 +1,4 @@
-# Model-Based and Q-Learning-Based Pursuit–Evasion Control of Autonomous Ground Vehicles Using QCar-Compatible State-Space Models
+# Disturbance-Aware Model-Based and Model-Free Algorithms for Discrete-Time Zero-Sum Pursuit-Evasion Games
 
 > **Project Status:** Active Master of Science thesis project at Tennessee Technological University. This repository contains the reproducible MATLAB implementation, simulation studies, literature documentation, and supporting materials developed for the thesis. The final defended thesis, archival citation, and approved publication links will be added after institutional submission and approval.
 
