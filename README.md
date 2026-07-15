@@ -6,13 +6,13 @@
 
 This repository documents a theoretical and computational research project at the intersection of optimal control, zero-sum dynamic games, model-free control, disturbance compensation, and pursuit–evasion systems.
 
-The thesis investigates how established model-based and model-free zero-sum control algorithms can be extended for a disturbance-aware pursuit–evasion setting. The work does not introduce an entirely new family of algorithms. Instead, it begins with established policy-iteration, value-iteration, and Q-learning methods and develops the additional mathematical and computational structures needed to account for persistent command-channel offsets and their compensation.
+The thesis investigates how established model-based and model-free zero-sum control algorithms can be extended to a disturbance-aware pursuit–evasion setting. The work does not introduce an entirely new family of control algorithms. Instead, it begins with established policy-iteration, value-iteration, and Q-learning methods and adds the mathematical and computational structures needed to represent, estimate, and compensate persistent command-channel offsets.
 
-The model-based portion extends generalized algebraic Riccati equation methods using known system dynamics. The model-free portion extends quadratic Q-learning methods that estimate the game Q-function and recover the corresponding feedback policies from sampled state, input, cost, and successor-state data without requiring direct access to the analytical state-transition matrices.
+The model-based methods use known system dynamics and generalized algebraic Riccati equation formulations. The model-free methods estimate a quadratic action-value function from sampled state, input, cost, and successor-state data without requiring direct access to the analytical state-transition matrices.
 
-Both approaches are developed under a common zero-sum game formulation, disturbance model, compensation structure, and numerical evaluation framework. MATLAB is used to examine convergence, closed-loop stability, saddle-point validity, command-bias estimation, finite-window game cost, and deviation from nominal behavior.
+All four methods are studied under a common zero-sum game formulation, command-disturbance model, compensation structure, and MATLAB evaluation framework.
 
-The completed thesis is intended to provide a theoretical and computational foundation for future implementation on autonomous ground-vehicle platforms. Physical QCar or QLabs deployment is treated as future work and is not claimed as part of the present thesis.
+The completed thesis is intended to provide the theoretical and computational foundation for later nonlinear vehicle simulation and possible QCar or QLabs implementation. Completed physical QCar validation is not claimed as part of the present work.
 
 ## Research Direction
 
@@ -23,261 +23,512 @@ The thesis is organized around four established zero-sum control methods:
 3. Model-free Q-learning policy iteration.
 4. Model-free Q-learning value iteration.
 
-These methods are not replaced by newly invented algorithms. Their original mathematical structures are retained and extended to fit the disturbance-aware pursuit–evasion problem considered in this thesis.
+The mathematical structures of the original algorithms are retained. The thesis extends their implementation to account for persistent differences between commanded and realized pursuer and evader inputs.
 
-The main extension introduces persistent command-channel offsets of the form
+The objective is to develop matched disturbance-aware versions of the four methods rather than replace the original algorithms with unrelated formulations.
 
-\[
+## Zero-Sum Game Formulation
+
+The nominal discrete-time system is represented by
+
+$$
+x_{k+1}
+=
+Ax_k
++
+B_Pu_{P,k}
++
+B_Eu_{E,k},
+$$
+
+where:
+
+- \(x_k\) is the game state;
+- \(u_{P,k}\) is the pursuer input;
+- \(u_{E,k}\) is the evader input;
+- \(B_P\) is the pursuer input matrix;
+- \(B_E\) is the evader input matrix.
+
+The pursuer acts as the minimizing player, while the evader acts as the maximizing player.
+
+A representative infinite-horizon quadratic game cost is
+
+$$
+J
+=
+\sum_{k=0}^{\infty}
+\left(
+x_k^{\mathsf T}Qx_k
++
+u_{P,k}^{\mathsf T}R_Pu_{P,k}
+-
+u_{E,k}^{\mathsf T}R_Eu_{E,k}
+\right).
+$$
+
+The corresponding feedback policies are written as
+
+$$
+u_{P,k}=Lx_k,
+$$
+
+and
+
+$$
+u_{E,k}=Kx_k,
+$$
+
+where \(L\) is the pursuer feedback gain and \(K\) is the evader feedback gain.
+
+Under these policies, the nominal closed-loop system is
+
+$$
+x_{k+1}
+=
+\left(
+A+B_PL+B_EK
+\right)x_k.
+$$
+
+## Persistent Command-Channel Offsets
+
+The disturbance-aware extension assumes that the realized inputs may differ from the commanded inputs because of persistent command-channel offsets.
+
+For the pursuer,
+
+$$
 u_{P,k}^{\mathrm{actual}}
 =
 u_{P,k}^{\mathrm{command}}
 +
 b_P,
-\]
+$$
 
-\[
+and for the evader,
+
+$$
 u_{E,k}^{\mathrm{actual}}
 =
 u_{E,k}^{\mathrm{command}}
 +
-b_E,
-\]
+b_E.
+$$
 
-where \(b_P\) and \(b_E\) represent constant or slowly varying command offsets affecting the pursuer and evader channels.
+The terms \(b_P\) and \(b_E\) represent constant or slowly varying offsets affecting the pursuer and evader command channels.
 
-The corresponding compensated commands are
+Possible physical interpretations include:
 
-\[
+- acceleration-command calibration error;
+- steering-center offset;
+- persistent actuator mismatch;
+- repeatable differences between commanded and realized inputs;
+- approximately constant implementation error over an experiment.
+
+Without compensation, the disturbed closed-loop system becomes
+
+$$
+x_{k+1}
+=
+\left(
+A+B_PL+B_EK
+\right)x_k
++
+B_Pb_P
++
+B_Eb_E.
+$$
+
+The feedback gains may remain stabilizing, but the persistent affine term can produce a nonzero steady-state deviation from nominal behavior.
+
+## Command-Offset Estimation
+
+For the model-based methods, the command offsets can be estimated using the known system matrices and measured state transitions.
+
+The transition residual is
+
+$$
+r_k
+=
+x_{k+1}
+-
+Ax_k
+-
+B_Pu_{P,k}^{\mathrm{command}}
+-
+B_Eu_{E,k}^{\mathrm{command}}.
+$$
+
+Under the persistent-offset model,
+
+$$
+r_k
+=
+B_Pb_P
++
+B_Eb_E
++
+\eta_k,
+$$
+
+where \(\eta_k\) represents measurement noise, process noise, or numerical error.
+
+The combined bias vector is
+
+$$
+b
+=
+\begin{bmatrix}
+b_P \\
+b_E
+\end{bmatrix},
+$$
+
+and the combined input matrix is
+
+$$
+B_b
+=
+\begin{bmatrix}
+B_P & B_E
+\end{bmatrix}.
+$$
+
+The calibration model can therefore be written as
+
+$$
+r_k=B_bb+\eta_k.
+$$
+
+An estimate of the persistent command offsets may then be obtained from a batch of transition residuals using least squares.
+
+## Affine Command Compensation
+
+The estimated pursuer and evader offsets are denoted by \(\hat b_P\) and \(\hat b_E\).
+
+The compensated pursuer command is
+
+$$
 u_{P,k}^{\mathrm{command}}
 =
 Lx_k-\hat b_P,
-\]
+$$
 
-\[
+and the compensated evader command is
+
+$$
 u_{E,k}^{\mathrm{command}}
 =
-Kx_k-\hat b_E,
-\]
+Kx_k-\hat b_E.
+$$
 
-where \(L\) and \(K\) are the minimizing and maximizing feedback gains and \(\hat b_P\) and \(\hat b_E\) are estimated command-channel offsets.
+After the true offsets enter the realized inputs,
 
-Under this compensation structure, the closed-loop system becomes
+$$
+u_{P,k}^{\mathrm{actual}}
+=
+Lx_k-\hat b_P+b_P,
+$$
 
-\[
+and
+
+$$
+u_{E,k}^{\mathrm{actual}}
+=
+Kx_k-\hat b_E+b_E.
+$$
+
+The compensated closed-loop dynamics are therefore
+
+$$
 x_{k+1}
 =
-(A+BL+EK)x_k
+\left(
+A+B_PL+B_EK
+\right)x_k
 +
-B(b_P-\hat b_P)
+B_P\left(b_P-\hat b_P\right)
 +
-E(b_E-\hat b_E).
-\]
+B_E\left(b_E-\hat b_E\right).
+$$
 
-Exact bias estimates recover the nominal closed-loop dynamics, while imperfect estimates leave only the residual estimation error.
+When the estimates are exact,
 
-## Research Focus
+$$
+\hat b_P=b_P,
+\qquad
+\hat b_E=b_E,
+$$
 
-- **Zero-sum pursuit–evasion control:** Formulation of a discrete-time, two-player dynamic game involving a minimizing pursuer and a maximizing evader.
+the disturbance terms cancel and the nominal closed-loop dynamics are recovered:
 
-- **Model-based policy iteration:** Extension of the established generalized algebraic Riccati policy-iteration method with command-bias estimation and affine compensation.
+$$
+x_{k+1}
+=
+\left(
+A+B_PL+B_EK
+\right)x_k.
+$$
 
-- **Model-based value iteration:** Extension of the established generalized algebraic Riccati value-iteration method using the same disturbance and compensation formulation.
-
-- **Model-free Q-learning policy iteration:** Extension of an off-policy quadratic Q-learning method that estimates the game Q-function from measured transition data.
-
-- **Model-free Q-learning value iteration:** Extension of the corresponding Q-learning value-iteration method under the same zero-sum cost and disturbance structure.
-
-- **Persistent command disturbances:** Representation of calibration-like offsets between commanded and realized pursuer and evader inputs.
-
-- **Disturbance estimation:** Model-based estimation from state-transition residuals and model-free estimation from measured command-channel data.
-
-- **Affine compensation:** Modification of the implemented control commands to cancel estimated persistent input offsets.
-
-- **MATLAB verification:** Numerical analysis of convergence, Riccati residuals, saddle-point curvature, closed-loop stability, bias estimation, and compensation performance.
-
-- **Foundational vehicle application:** Development of a framework that can later be transferred to autonomous ground-vehicle models and physical platforms.
+When the estimates are imperfect, the remaining affine term depends only on the bias-estimation errors.
 
 ## Model-Based Methods
 
-The model-based portion uses known system matrices in the discrete-time zero-sum game
+### Policy Iteration
 
-\[
-x_{k+1}
+The model-based policy-iteration method alternates between policy evaluation and policy improvement.
+
+For fixed feedback gains \(L_i\) and \(K_i\), the closed-loop matrix is
+
+$$
+A_i
 =
-Ax_k
-+
-Bu_{P,k}
-+
-Eu_{E,k}.
-\]
+A+B_PL_i+B_EK_i.
+$$
 
-The quadratic game cost is written as
+The policy-evaluation step determines the value matrix associated with the current pursuer and evader policies.
 
-\[
-J
-=
-\sum_{k=0}^{\infty}
-\left(
-x_k^{\top}Qx_k
-+
-u_{P,k}^{\top}R_Pu_{P,k}
--
-u_{E,k}^{\top}R_Eu_{E,k}
-\right).
-\]
+The policy-improvement step then updates the gains from the generalized zero-sum quadratic game conditions.
 
-The pursuer minimizes the cost, while the evader maximizes it.
+The disturbance-aware extension does not replace these Riccati or gain-update equations. Instead, it adds:
 
-The model-based study retains the established generalized algebraic Riccati equation solution structure and evaluates two numerical approaches:
+- command-offset calibration;
+- estimated affine compensation;
+- nominal and disturbed simulations;
+- closed-loop checks;
+- convergence histories;
+- numerical output and figure generation.
 
-- Policy iteration, which alternates between policy evaluation and policy improvement.
-- Value iteration, which repeatedly applies the generalized Riccati mapping and updates the feedback gains.
+### Value Iteration
 
-The disturbance-aware extension is added through:
+The model-based value-iteration method repeatedly applies the generalized Riccati mapping and updates the corresponding pursuer and evader feedback gains.
 
-- Persistent command-channel offsets.
-- Model-based bias calibration.
-- Affine command compensation.
-- Nominal, uncompensated, estimated-compensation, and exact-compensation simulations.
-- Stability, curvature, convergence, and Riccati-residual checks.
+The disturbance-aware extension uses the same command-offset model and compensation structure as the policy-iteration method.
+
+This creates a direct comparison between two established model-based solution procedures operating on the same zero-sum game.
 
 ## Model-Free Methods
 
-The model-free portion uses sampled transition data rather than direct access to the analytical system matrices.
+The model-free methods recover the zero-sum feedback policies from sampled transition data without directly using the analytical state-transition matrices in the Q-learning update.
 
-The joint state-action vector is written as
+The joint state-action vector is
 
-\[
+$$
 z_k
 =
 \begin{bmatrix}
 x_k \\
 u_{P,k} \\
 u_{E,k}
-\end{bmatrix},
-\]
+\end{bmatrix}.
+$$
 
-and the quadratic Q-function is represented by
+The quadratic Q-function is represented as
 
-\[
-Q(z_k)
+$$
+Q_H(z_k)
 =
-z_k^{\top}Hz_k.
-\]
+z_k^{\mathsf T}Hz_k,
+$$
 
-The matrix \(H\) is estimated from sampled states, actions, stage costs, and successor states. The pursuer and evader policies are then recovered from the appropriate matrix partitions.
+where \(H\) is a symmetric matrix estimated from sampled data.
 
-The model-free methods retain the established quadratic Q-learning policy-iteration and value-iteration structures. The disturbance-aware extension adds:
+The matrix can be partitioned as
 
-- Commanded-versus-realized input measurements.
-- Persistent command-offset estimation.
-- Affine compensation during control execution.
-- Nominal, uncompensated, and compensated comparisons.
-- Bellman-regression, feature-rank, conditioning, gain, and convergence diagnostics.
+$$
+H
+=
+\begin{bmatrix}
+H_{xx} & H_{xP} & H_{xE} \\
+H_{Px} & H_{PP} & H_{PE} \\
+H_{Ex} & H_{EP} & H_{EE}
+\end{bmatrix}.
+$$
 
-The model-free designation refers to the fact that the Q-learning updates do not require the analytical state-transition matrices. Measured command-channel information may still be used to estimate persistent actuator offsets.
+The pursuer and evader gains are recovered from the appropriate blocks of \(H\) using the zero-sum saddle-point conditions.
+
+### Q-Learning Policy Iteration
+
+The model-free policy-iteration method evaluates the Q-function associated with fixed pursuer and evader policies using sampled transitions. It then improves both policies using the estimated quadratic Q-function matrix.
+
+The method retains the original off-policy Q-learning policy-iteration structure. The disturbance-aware extension adds:
+
+- commanded and realized input histories;
+- persistent command-offset estimation;
+- affine compensation;
+- matched disturbed and nominal simulations;
+- regression and conditioning diagnostics.
+
+### Q-Learning Value Iteration
+
+The model-free value-iteration method estimates successive quadratic Q-functions from sampled state transitions and updates the pursuer and evader policies from the resulting matrix partitions.
+
+The same persistent-offset and compensation formulation is applied so that the model-free policy-iteration and value-iteration methods can be compared under matched conditions.
+
+## Common Evaluation Cases
+
+Each algorithm is evaluated using the same primary cases.
+
+### 1. Nominal Operation
+
+No persistent command offsets are present:
+
+$$
+b_P=0,
+\qquad
+b_E=0.
+$$
+
+This case establishes the nominal algorithm behavior.
+
+### 2. Persistent Offsets Without Compensation
+
+The true offsets enter the realized inputs, but no bias estimate is subtracted from the commands.
+
+This case measures the effect of persistent actuator or command mismatch.
+
+### 3. Persistent Offsets With Estimated Compensation
+
+The estimated biases are subtracted from the commanded inputs.
+
+This case measures how effectively the estimation and compensation procedure restores nominal behavior.
+
+### 4. Exact Compensation Verification
+
+The true offsets are used in the compensation law.
+
+This is a numerical verification case. It is used to confirm that exact cancellation of the command offsets recovers the nominal trajectory to numerical precision.
 
 ## MATLAB Validation
 
-The MATLAB studies are designed to verify the mathematical and computational behavior of the extended algorithms.
+MATLAB is used to examine the theoretical and computational behavior of the four extended algorithms.
 
-The primary evaluation cases are:
+The numerical studies may include:
 
-1. **Nominal operation:** No command-channel offsets are present.
+- policy-iteration convergence;
+- value-iteration convergence;
+- Q-learning regression convergence;
+- generalized algebraic Riccati equation residuals;
+- closed-loop spectral radius;
+- minimizing-player curvature;
+- maximizing-player Schur-complement curvature;
+- game-matrix conditioning;
+- feature-matrix rank;
+- regression conditioning;
+- Bellman residuals;
+- true and estimated command offsets;
+- bias-estimation errors;
+- calibration residuals;
+- nominal state trajectories;
+- uncompensated state trajectories;
+- compensated state trajectories;
+- predicted steady-state deviations;
+- finite-window zero-sum game cost;
+- deviation from nominal behavior;
+- exact-compensation verification error.
 
-2. **Persistent offsets without compensation:** Constant offsets are added to the realized pursuer and evader inputs.
+The MATLAB scripts are structured to save reproducible outputs such as:
 
-3. **Persistent offsets with estimated compensation:** Estimated biases are subtracted from the commanded inputs.
+- MATLAB figure files;
+- high-resolution PNG figures;
+- CSV summary tables;
+- MAT files containing the complete numerical workspace.
 
-4. **Persistent offsets with exact compensation:** The true offsets are used as a verification case to confirm recovery of the nominal trajectory.
+## Relationship to Pursuit–Evasion Control
 
-The numerical outputs include:
+The current algorithms are first evaluated on established discrete-time zero-sum state-space models. This allows the Riccati, Q-learning, disturbance-estimation, and compensation components to be studied without immediately introducing the additional complexity of nonlinear vehicle dynamics.
 
-- Policy-iteration or value-iteration convergence histories.
-- Generalized algebraic Riccati equation residuals.
-- Closed-loop spectral radius.
-- Minimizing-player curvature.
-- Maximizing-player Schur-complement curvature.
-- True and estimated command biases.
-- Bias-estimation error.
-- Calibration fit error.
-- Final state norms.
-- Predicted steady-state offsets.
-- Reduction in steady-state error.
-- Finite-window zero-sum game cost.
-- Deviation from the nominal trajectory.
-- Exact-compensation verification error.
+The resulting framework is then intended to support a pursuit–evasion interpretation in which:
 
-Each MATLAB script automatically creates a results folder containing:
-
-- MATLAB `.fig` files.
-- High-resolution `.png` figures.
-- Numerical summary `.csv` files.
-- Complete workspace `.mat` files.
-
-## Current Model-Based Policy-Iteration Results
-
-The completed model-based policy-iteration benchmark demonstrates that:
-
-- The generalized Riccati policy iteration converges to a stabilizing saddle solution.
-- The final generalized algebraic Riccati residual is near machine precision.
-- The closed-loop matrix is Schur stable.
-- The pursuer and evader curvature conditions are satisfied.
-- Persistent command offsets create a nonzero steady-state deviation.
-- Estimated affine compensation substantially reduces the resulting error.
-- Exact compensation recovers the nominal trajectory to numerical precision.
-
-These results verify the compensation extension on the supplied zero-sum benchmark before the same structure is transferred to the full pursuit–evasion model.
+- the pursuer minimizes the zero-sum objective;
+- the evader maximizes the same objective;
+- the pursuer attempts to reduce relative separation;
+- the evader attempts to delay or prevent capture;
+- persistent command mismatch affects both players;
+- compensation is applied without replacing the original game solution method.
 
 ## Relationship to Autonomous Ground Vehicles
 
-The current work is theoretical and computational. The algorithms are first verified on established discrete-time zero-sum state-space models so that the effect of each extension can be isolated and evaluated.
+The broader thesis uses autonomous ground-vehicle pursuit–evasion as the motivating application.
 
-The later pursuit–evasion formulation will use the previously established autonomous ground-vehicle modeling foundation, including physically meaningful vehicle states and control inputs. Depending on the final model, each vehicle may be represented by states such as
+A representative vehicle state may be written as
 
-\[
+$$
 z_{i,k}
 =
 \begin{bmatrix}
-x_{i,k} &
-y_{i,k} &
-\psi_{i,k} &
+p_{x,i,k} \\
+p_{y,i,k} \\
+\psi_{i,k} \\
 v_{i,k}
-\end{bmatrix}^{\top},
+\end{bmatrix},
 \qquad
 i\in\{P,E\},
-\]
+$$
 
-with inputs such as
+where:
 
-\[
+- \(p_{x,i,k}\) and \(p_{y,i,k}\) are planar coordinates;
+- \(\psi_{i,k}\) is the vehicle heading;
+- \(v_{i,k}\) is the longitudinal speed.
+
+A representative control vector is
+
+$$
 u_{i,k}
 =
 \begin{bmatrix}
-a_{i,k} &
+a_{i,k} \\
 \delta_{i,k}
-\end{bmatrix}^{\top}.
-\]
+\end{bmatrix},
+$$
 
-In that setting, the scalar command offsets used in the benchmark are replaced by acceleration and steering offset vectors:
+where \(a_{i,k}\) is the acceleration command and \(\delta_{i,k}\) is the steering command.
 
-\[
+For a vehicle implementation, the persistent command offsets may become vector-valued:
+
+$$
 b_P
 =
 \begin{bmatrix}
 b_{a,P} \\
 b_{\delta,P}
 \end{bmatrix},
-\qquad
+$$
+
+and
+
+$$
 b_E
 =
 \begin{bmatrix}
 b_{a,E} \\
 b_{\delta,E}
 \end{bmatrix}.
-\]
+$$
 
-The present MATLAB work therefore establishes the algorithmic and numerical foundation needed before attempting nonlinear vehicle simulation or hardware implementation.
+The current linear zero-sum studies therefore serve as the theoretical and computational foundation for later nonlinear vehicle extensions.
+
+## Research Focus
+
+- **Zero-sum pursuit–evasion formulation:** Development of a two-player game with a minimizing pursuer and a maximizing evader.
+
+- **Model-based policy iteration:** Extension of generalized Riccati policy iteration with persistent command-offset estimation and affine compensation.
+
+- **Model-based value iteration:** Extension of generalized Riccati value iteration using the same disturbance model and compensation structure.
+
+- **Model-free Q-learning policy iteration:** Extension of quadratic Q-learning policy iteration using sampled transition data.
+
+- **Model-free Q-learning value iteration:** Extension of quadratic Q-learning value iteration under the same game and disturbance assumptions.
+
+- **Persistent command disturbances:** Representation of repeatable differences between commanded and realized inputs.
+
+- **Disturbance estimation:** Estimation of command offsets from model-based transition residuals or measured command-channel data.
+
+- **Affine compensation:** Cancellation of estimated command offsets during policy execution.
+
+- **Matched MATLAB validation:** Evaluation of all four methods using common disturbance cases and numerical criteria.
+
+- **Vehicle-oriented foundation:** Preparation for later nonlinear kinematic-bicycle, QLabs, or QCar studies.
 
 ## Presentation
 
@@ -285,7 +536,7 @@ This work was presented at Tennessee Tech's **2026 Research and Creative Inquiry
 
 [View the Tennessee Tech Research and Creative Inquiry Symposium page](https://www.tntech.edu/research/research-day.php)
 
-The symposium presentation reflected an earlier stage of the thesis. The current research direction places greater emphasis on disturbance-aware extensions of established model-based and model-free zero-sum algorithms and on MATLAB-based theoretical validation.
+The symposium presentation reflects an earlier stage of the thesis. The current research direction places greater emphasis on disturbance-aware extensions of established model-based and model-free zero-sum algorithms and on MATLAB-based theoretical validation.
 
 ## Abstract
 
@@ -303,30 +554,29 @@ This repository presents a reproducible theoretical, algorithmic, and MATLAB-bas
 
 The current scope includes:
 
-- One minimizing pursuer and one maximizing evader.
-- Discrete-time linear or locally linearized system models.
-- Two-player zero-sum quadratic game formulations.
-- Generalized algebraic Riccati policy iteration.
-- Generalized algebraic Riccati value iteration.
-- Quadratic Q-learning policy iteration.
-- Quadratic Q-learning value iteration.
-- Persistent command-channel offsets.
-- Model-based and measurement-based bias estimation.
-- Affine command compensation.
-- MATLAB convergence and closed-loop studies.
-- Foundational development for later vehicle implementation.
+- one minimizing pursuer and one maximizing evader;
+- discrete-time linear or locally linearized models;
+- two-player zero-sum quadratic games;
+- generalized Riccati policy iteration;
+- generalized Riccati value iteration;
+- quadratic Q-learning policy iteration;
+- quadratic Q-learning value iteration;
+- persistent command-channel offsets;
+- command-offset estimation;
+- affine command compensation;
+- MATLAB convergence and closed-loop studies;
+- preparation for later autonomous ground-vehicle implementation.
 
 The current scope does not include:
 
-- Completed physical QCar experiments.
-- Completed QLabs deployment.
-- A new policy-iteration or value-iteration theory.
-- A claim that the underlying algorithms were invented in this thesis.
-- Deep reinforcement-learning actor-critic methods.
-- A full autonomous-driving traffic simulator.
-- Multi-pursuer or multi-evader coordination.
-- Global optimality guarantees for nonlinear vehicle dynamics.
-- High-fidelity tire, suspension, or three-dimensional vehicle dynamics.
+- completed physical QCar experiments;
+- completed QLabs deployment;
+- a claim that policy iteration, value iteration, or Q-learning was invented in this thesis;
+- deep actor-critic reinforcement-learning methods;
+- a full autonomous-driving traffic simulator;
+- multi-pursuer or multi-evader coordination;
+- global optimality guarantees for nonlinear vehicle dynamics;
+- high-fidelity tire, suspension, or three-dimensional vehicle dynamics.
 
 ## Research Contribution
 
@@ -338,35 +588,44 @@ The primary contributions are:
 
 1. A common disturbance-aware zero-sum pursuit–evasion formulation.
 
-2. Extension of model-based policy iteration with persistent command-offset estimation and affine compensation.
+2. An extension of model-based policy iteration with persistent command-offset estimation and affine compensation.
 
-3. Extension of model-based value iteration using the same compensation structure.
+3. An extension of model-based value iteration using the same disturbance and compensation structure.
 
-4. Extension of model-free Q-learning policy iteration for the same disturbance-aware game.
+4. An extension of model-free Q-learning policy iteration under the same zero-sum game.
 
-5. Extension of model-free Q-learning value iteration under the same information and compensation assumptions.
+5. An extension of model-free Q-learning value iteration under matched disturbance and information assumptions.
 
-6. A reproducible MATLAB framework for comparing nominal, uncompensated, estimated-compensation, and exact-compensation behavior.
+6. A reproducible MATLAB framework for nominal, uncompensated, estimated-compensation, and exact-compensation studies.
 
-7. A mathematical and computational foundation for future nonlinear vehicle and QCar implementation.
+7. A theoretical and computational foundation for later nonlinear vehicle and QCar implementation.
 
 ## Future Work
 
-Future research may extend this framework through:
+Future work may include:
 
-- Nonlinear kinematic bicycle dynamics.
-- Dynamic bicycle models.
-- Vector-valued acceleration and steering biases.
-- Time-varying or stochastic disturbances.
-- Online bias estimation.
-- Output-feedback implementations.
-- Partial-state measurements.
-- Input saturation and command delay.
-- Multi-pursuer and multi-evader games.
-- QLabs simulation.
-- Physical QCar testing.
-- Hardware-based disturbance calibration.
-- Experimental comparison between model-based and model-free implementations.
+- nonlinear kinematic-bicycle dynamics;
+- dynamic bicycle models;
+- vector-valued acceleration and steering offsets;
+- online bias estimation;
+- slowly time-varying disturbances;
+- stochastic command disturbances;
+- process and measurement noise;
+- partial-state measurements;
+- output-feedback formulations;
+- actuator saturation;
+- communication and command delays;
+- multiple pursuers and evaders;
+- QLabs simulation;
+- physical QCar testing;
+- hardware-based command calibration;
+- experimental comparison of model-based and model-free implementations.
+
+## Citation
+
+Citation information for the final thesis will be added after the thesis has been submitted, defended, approved, and archived.
+
+A complete archival citation and permanent institutional link will be added when available.
 
 ## Citation
 
