@@ -1,12 +1,12 @@
 # Literature Review and Research Foundations
 
-This directory documents the literature base for the thesis:
+This directory documents the literature foundation for the thesis:
 
-**Model-Based and Q-Learning-Based Pursuit–Evasion Control of Autonomous Ground Vehicles Using QCar-Compatible State-Space Models**
+**Disturbance-Aware Model-Based and Model-Free Zero-Sum Pursuit-Evasion Control: Theory, Algorithm Development, and MATLAB Validation**
 
-The thesis brings together research from autonomous driving, ground-vehicle modeling, pursuit–evasion differential games, linear-quadratic dynamic games, reinforcement learning, robust control, and QCar/QLabs implementation.
+The thesis brings together research from zero-sum dynamic games, generalized algebraic Riccati equations, model-based policy iteration, model-based value iteration, model-free quadratic Q-learning, persistent input disturbances, command-bias estimation, affine compensation, numerical verification, and pursuit-evasion control.
 
-The literature is used to justify the vehicle model, formulate the pursuit–evasion game, support the fitted-Q recovery method, define robustness experiments, and establish a realistic path toward laboratory-scale autonomous vehicle implementation.
+The literature is used to establish the original algorithms, define the disturbance-aware extension, justify the numerical validation criteria, and connect the theoretical framework to future autonomous-ground-vehicle applications.
 
 ---
 
@@ -14,9 +14,43 @@ The literature is used to justify the vehicle model, formulate the pursuit–eva
 
 The literature review supports one central objective:
 
-> Build a shared, physically meaningful pursuit–evasion benchmark for two autonomous ground vehicles and compare a model-based finite-horizon Riccati saddle policy with a data-driven fitted-Q policy-recovery method.
+> Extend established model-based and model-free zero-sum control algorithms so that persistent command-channel offsets can be represented, estimated, and compensated without replacing the original policy-iteration, value-iteration, or Q-learning structures.
 
-The literature is not included only as background material. Each source category supports a specific modeling, control, learning, robustness, or implementation decision used in the thesis.
+The literature is not included only as background material. Each source category supports a specific part of the thesis:
+
+- the nominal zero-sum game formulation;
+- the generalized Riccati solution;
+- model-based policy iteration;
+- model-based value iteration;
+- model-free Q-learning policy iteration;
+- model-free Q-learning value iteration;
+- persistent command-offset modeling;
+- bias estimation and affine compensation;
+- convergence and numerical well-posedness checks;
+- pursuit-evasion interpretation;
+- future autonomous-vehicle implementation.
+
+---
+
+## Thesis Algorithm Structure
+
+The thesis is organized around four established zero-sum control methods:
+
+1. Model-based policy iteration.
+2. Model-based value iteration.
+3. Model-free Q-learning policy iteration.
+4. Model-free Q-learning value iteration.
+
+The thesis does not claim that these algorithms were invented in this work.
+
+Their original mathematical roles are retained. The research contribution is the addition of a common disturbance-aware structure involving:
+
+- persistent command-channel offsets;
+- command-offset estimation;
+- affine command compensation;
+- matched nominal and disturbed simulations;
+- common convergence and stability checks;
+- reproducible MATLAB validation.
 
 ---
 
@@ -24,231 +58,549 @@ The literature is not included only as background material. Each source category
 
 | Literature Area | Role in the Thesis |
 |---|---|
-| Intelligent transportation systems and autonomous driving | Motivates autonomous driving as a multi-agent decision and control problem rather than only a perception problem. |
-| Ground-vehicle state-space models | Supports the selection of a kinematic bicycle model with position, heading, speed, acceleration, and steering behavior. |
-| Kinematic and dynamic bicycle models | Establishes the tradeoff between model tractability and vehicle realism. |
-| Pursuit–evasion differential games | Provides the adversarial interaction structure: the pursuer seeks capture while the evader seeks to avoid capture. |
-| Linear-quadratic dynamic games | Supports the finite-horizon Riccati saddle-point formulation used for the model-based controller. |
-| Reinforcement learning and fitted-Q methods | Supports learning from sampled state transitions without direct use of analytical system matrices. |
-| Safe and robust control | Motivates perturbation studies involving mismatch, delay, saturation, and noise. |
-| QCar and QLabs sources | Connects the simulation model and controller inputs to a laboratory-scale autonomous vehicle platform. |
-| Graph-based multi-agent pursuit–evasion | Provides a future path from the two-vehicle benchmark toward coordinated multi-agent teams. |
+| Zero-sum linear-quadratic dynamic games | Defines the shared two-player minimax control problem. |
+| Generalized algebraic Riccati equations | Provides the model-based saddle-point solution. |
+| Model-based policy iteration | Supports the first model-based algorithm. |
+| Model-based value iteration | Supports the second model-based algorithm. |
+| Quadratic Q-learning policy iteration | Supports the first model-free algorithm. |
+| Quadratic Q-learning value iteration | Supports the second model-free algorithm. |
+| Persistent actuator and command biases | Defines the disturbance model added to both players. |
+| Bias estimation and offset compensation | Supports calibration, estimation, and affine compensation. |
+| Numerical linear algebra and game solvability | Supports conditioning, curvature, convergence, and stability checks. |
+| Pursuit-evasion game theory | Provides the pursuer-versus-evader interpretation. |
+| Autonomous ground vehicles and QCar | Provides a future application and implementation pathway. |
 
 ---
 
-## Literature Categories
+## 1. Zero-Sum Linear-Quadratic Dynamic Games
 
-### 1. Intelligent Transportation Systems and Autonomous Driving
+This literature provides the main theoretical foundation for the thesis.
 
-This group motivates the application domain.
+The nominal discrete-time zero-sum system is represented as:
 
-Autonomous driving is not only a perception problem. Vehicles must make decisions in environments containing other vehicles, pedestrians, infrastructure, uncertainty, and conflicting objectives. Lane changes, merges, following, gap acceptance, and collision avoidance all involve interactions with other agents.
-
-This literature supports the use of pursuit–evasion as a controlled benchmark for studying competitive vehicle interaction.
-
-Key themes include:
-
-- Connected and automated vehicles.
-- Multi-agent decision making.
-- Autonomous driving control.
-- Reinforcement learning for transportation systems.
-- Interaction under uncertainty.
-- Safety-critical vehicle behavior.
-
----
-
-### 2. Ground-Vehicle State-Space Models
-
-This group supports the vehicle-model selection process.
-
-The thesis compares several model families before selecting the kinematic bicycle model as the primary state-space representation.
-
-| Model Class | Typical States | Typical Inputs | Thesis Role |
-|---|---|---|---|
-| Point-mass or double integrator | Position and velocity | Planar acceleration | Useful for basic LQ analysis but too abstract for car-like steering behavior. |
-| Unicycle | Position and heading | Forward speed and angular velocity | Useful for mobile robots but not a direct front-steering vehicle model. |
-| Differential drive | Pose and wheel-related states | Left and right wheel speeds | Relevant to mobile robotics but less natural for QCar-style vehicle control. |
-| Kinematic bicycle | Position, heading, speed, steering-related behavior | Acceleration and steering | Primary model because it balances realism, tractability, and implementation compatibility. |
-| Dynamic bicycle | Position, heading, longitudinal velocity, lateral velocity, yaw rate | Steering, force, acceleration | Higher-fidelity extension for tire-slip, lateral dynamics, and aggressive maneuvers. |
-| QCar or QLabs model | Platform-dependent states and measurements | Velocity, throttle, steering, motor commands | Implementation bridge toward virtual and physical experiments. |
-
-The selected kinematic bicycle state is:
-
-    z = [x y psi v]'
+```text
+x(k+1) = A*x(k) + Bp*uP(k) + Be*uE(k)
+```
 
 where:
 
-| Variable | Description |
-|---|---|
-| `x` | Global longitudinal position |
-| `y` | Global lateral position |
-| `psi` | Vehicle heading angle |
-| `v` | Longitudinal vehicle speed |
+- `x(k)` is the game state;
+- `uP(k)` is the pursuer or minimizing-player input;
+- `uE(k)` is the evader or maximizing-player input;
+- `Bp` is the pursuer input matrix;
+- `Be` is the evader input matrix.
 
-The corresponding controls are:
+A representative quadratic game cost is:
 
-    u = [a delta]'
+```text
+J = sum over k of:
 
-where `a` is longitudinal acceleration and `delta` is steering angle.
+    x(k)'*Q*x(k)
+  + uP(k)'*RP*uP(k)
+  - uE(k)'*RE*uE(k)
+```
 
----
-
-### 3. Kinematic Bicycle Model Literature
-
-The kinematic bicycle model is the primary model used in the thesis because it preserves car-like motion without introducing the full complexity of tire forces, slip angles, lateral velocity, and yaw-rate dynamics.
-
-The model supports:
-
-- Planar vehicle movement.
-- Heading-dependent motion.
-- Non-holonomic constraints.
-- Steering-limited maneuvers.
-- Longitudinal acceleration.
-- Linearization and discretization.
-- Finite-horizon LQ game design.
-- MATLAB simulation.
-- QCar and QLabs compatibility.
-
-The dynamic bicycle model remains important as a higher-fidelity future extension when lateral velocity, yaw rate, tire forces, and inertial effects become central to the research question.
-
----
-
-### 4. Pursuit–Evasion and Differential Game Theory
-
-This group provides the mathematical foundation for the adversarial interaction.
-
-In a pursuit–evasion game:
-
-- The pursuer attempts to reduce separation and enter a capture region.
-- The evader attempts to avoid capture or delay capture.
-- Both vehicles must obey their own dynamics and input constraints.
-
-The thesis uses a two-player zero-sum formulation because it provides a controlled and interpretable setting for comparing model-based and data-driven control approaches.
-
-Important concepts include:
-
-- Capture sets.
-- Relative geometry.
-- Pursuer and evader policies.
-- Saddle-point equilibria.
-- Finite-horizon dynamic games.
-- Differential games.
-- Discrete-time pursuit–evasion formulations.
-
-The two-vehicle case is treated as the basic unit of adversarial vehicle interaction before extending toward larger coordinated teams.
-
----
-
-### 5. Linear-Quadratic Dynamic Games
-
-This literature supports the Chapter 4 model-based controller.
-
-The nonlinear kinematic bicycle model is locally linearized and discretized to form a finite-horizon game:
-
-    X(k+1) = A X(k) + Bp uP(k) + Be uE(k)
-
-The model-based controller is obtained through a Riccati-type saddle-point recursion.
+The pursuer attempts to minimize the cost, while the evader attempts to maximize the same cost.
 
 This literature supports:
 
-- Stage-dependent feedback gains.
-- Finite-horizon pursuit–evasion control.
-- Saddle-point conditions.
-- Pursuer curvature conditions.
-- Evader Schur-complement conditions.
-- Numerical conditioning checks.
-- Terminal penalties.
-- Relative-state cost construction.
+- two-player zero-sum dynamic games;
+- minimax control;
+- saddle-point policies;
+- quadratic value functions;
+- discrete-time game formulations;
+- infinite-horizon and finite-horizon game theory;
+- existence and uniqueness conditions;
+- closed-loop stabilizing solutions.
 
-The Riccati policy serves as the analytical reference for the fitted-Q recovery study.
-
----
-
-### 6. Reinforcement Learning and Fitted-Q Recovery
-
-This group supports the Chapter 5 data-driven policy-recovery method.
-
-The fitted-Q method uses sampled transitions instead of direct access to the analytical transition matrices used by the Riccati recursion.
-
-The method learns from:
-
-- State samples.
-- Pursuer action samples.
-- Evader action samples.
-- Stage costs.
-- Successor states.
-
-The fitted-Q procedure reconstructs a stage-wise quadratic action-value function and extracts the pursuer and evader feedback gains.
-
-The purpose is not to claim that fitted-Q universally outperforms the Riccati solution. Instead, the objective is to determine whether sampled nominal transitions can recover the same finite-horizon saddle policy.
-
-Key concepts include:
-
-- Q-learning.
-- Bellman regression.
-- Quadratic Q-functions.
-- Least-squares fitting.
-- Function approximation.
-- Feature rank.
-- Numerical conditioning.
-- Gain-recovery error.
-- Bellman residuals.
+The zero-sum game formulation is the common mathematical foundation used by all four algorithms.
 
 ---
 
-### 7. Safe and Robust Control Literature
+## 2. Generalized Algebraic Riccati Equations
 
-This group motivates the Chapter 6 robustness studies.
+The generalized algebraic Riccati equation provides the model-based saddle-point solution for the nominal game.
 
-A controller that is optimal for a nominal linearized model may degrade when the actual execution conditions differ from the design assumptions.
+A quadratic value function is represented as:
 
-The thesis therefore evaluates the nominal Riccati saddle policy under execution-side perturbations.
+```text
+V(x) = x'*P*x
+```
 
-| Perturbation | Physical Interpretation |
-|---|---|
-| Wheelbase mismatch | Geometry or model-parameter uncertainty. |
-| Steering-gain mismatch | Differences between requested and realized steering response. |
-| Longitudinal-gain mismatch | Differences between requested and realized acceleration response. |
-| Command delay | Computation, communication, sensing, or actuator delay. |
-| Actuator-limit severity | Reduced available acceleration or steering authority. |
-| Process noise | Unmodeled disturbances affecting vehicle propagation. |
-| Measurement noise | Imperfect state estimates supplied to the controller. |
-| Combined perturbation case | Representative execution-side deviation from the nominal model. |
+where `P` is the game value matrix.
 
-These studies are sensitivity analyses. They do not claim that the selected perturbation magnitudes are identified QCar hardware parameters.
+The pursuer and evader feedback policies are written as:
+
+```text
+uP(k) = L*x(k)
+uE(k) = K*x(k)
+```
+
+The nominal closed-loop system is therefore:
+
+```text
+x(k+1) = (A + Bp*L + Be*K)*x(k)
+```
+
+This literature supports:
+
+- generalized algebraic Riccati equations;
+- zero-sum feedback saddle policies;
+- minimizing-player and maximizing-player gain recovery;
+- stabilizing value matrices;
+- game-Hessian structure;
+- block-matrix saddle conditions;
+- Riccati residual calculations;
+- closed-loop spectral-radius checks.
+
+The Riccati equation is not modified by the disturbance-aware extension. It remains the nominal game solution from which the feedback policies are obtained.
 
 ---
 
-### 8. QCar and QLabs Implementation Literature
+## 3. Model-Based Policy Iteration
 
-This group connects the mathematical model to a laboratory-scale autonomous vehicle platform.
+This literature supports the first model-based algorithm.
 
-QCar and QLabs references are used to support:
+Model-based policy iteration alternates between:
 
-- Car-like vehicle geometry.
-- Steering and velocity command interfaces.
-- Actuator constraints.
-- Virtual simulation workflows.
-- MATLAB, Simulink, and Python implementation pathways.
-- The distinction between simulation validation and completed hardware validation.
+1. Policy evaluation.
+2. Policy improvement.
 
-The thesis does not claim completed physical QCar validation. Instead, it develops a QCar-oriented simulation and robustness pipeline intended to reduce the gap between analytical control design and future platform testing.
+For fixed policies, the closed-loop matrix is:
+
+```text
+Ai = A + Bp*Li + Be*Ki
+```
+
+The policy-evaluation step determines the value matrix associated with the current pursuer and evader gains.
+
+The policy-improvement step updates both feedback gains using the zero-sum saddle-point conditions.
+
+This literature supports:
+
+- iterative policy evaluation;
+- discrete Lyapunov equations;
+- zero-sum policy improvement;
+- stabilizing initial policies;
+- convergence of value matrices and feedback gains;
+- comparison with direct Riccati solutions;
+- implementation of policy iteration in MATLAB.
+
+The disturbance-aware extension is added outside the original nominal policy-iteration structure.
+
+It introduces:
+
+- command-offset estimation;
+- affine compensation;
+- nominal and disturbed rollouts;
+- convergence histories;
+- Riccati residual checks;
+- stability and curvature checks.
 
 ---
 
-### 9. Graph-Based Multi-Agent Pursuit–Evasion
+## 4. Model-Based Value Iteration
 
-This group supports future extensions beyond one pursuer and one evader.
+This literature supports the second model-based algorithm.
 
-The present thesis focuses on a two-vehicle interaction because it provides:
+Model-based value iteration repeatedly applies the generalized Riccati mapping to update the value matrix.
 
-- A clear state-space model.
-- A transparent game formulation.
-- An analytical model-based baseline.
-- A controlled fitted-Q recovery problem.
-- Interpretable robustness experiments.
+After each value update, the pursuer and evader gains are recovered from the current matrix.
 
-Graph-based multi-agent pursuit–evasion provides a natural future direction in which several pursuers and evaders interact through communication, neighbor relationships, coordination policies, and network structure.
+This literature supports:
+
+- repeated Bellman or Riccati value updates;
+- convergence of the value matrix;
+- gain extraction from the current value estimate;
+- differences between value iteration and policy iteration;
+- numerical behavior under different initial conditions;
+- model-based zero-sum dynamic programming.
+
+The disturbance-aware value-iteration implementation uses the same:
+
+- command-offset model;
+- bias-estimation procedure;
+- affine compensation law;
+- simulation cases;
+- numerical validation criteria.
+
+The purpose is to compare two established model-based solution procedures under matched disturbance conditions.
+
+---
+
+## 5. Model-Free Quadratic Q-Learning
+
+This literature supports the two model-free algorithms.
+
+The model-free methods estimate the game action-value function from sampled transitions rather than directly using the analytical state-transition matrices in the Q-learning update.
+
+The joint state-action vector is:
+
+```text
+z(k) = [x(k); uP(k); uE(k)]
+```
+
+The quadratic Q-function is represented as:
+
+```text
+QH(z(k)) = z(k)'*H*z(k)
+```
+
+The matrix `H` contains the state, pursuer-input, evader-input, and cross-term information needed to recover the game policies.
+
+A representative partition is:
+
+```text
+H = [Hxx  HxP  HxE
+     HPx  HPP  HPE
+     HEx  HEP  HEE]
+```
+
+This literature supports:
+
+- quadratic Q-functions;
+- Bellman equations;
+- model-free control of linear systems;
+- off-policy learning;
+- least-squares estimation;
+- symmetric-matrix parameterization;
+- state-action feature construction;
+- policy recovery from matrix partitions;
+- persistence of excitation;
+- regression-rank requirements;
+- conditioning of the data matrix.
+
+The model-free designation means that the Q-learning update does not require direct access to the analytical state-transition matrices.
+
+---
+
+## 6. Model-Free Q-Learning Policy Iteration
+
+This literature supports the first model-free algorithm.
+
+Q-learning policy iteration alternates between:
+
+1. Estimating the Q-function associated with fixed pursuer and evader policies.
+2. Recovering improved policies from the estimated Q-function matrix.
+
+The method uses sampled data consisting of:
+
+- states;
+- pursuer actions;
+- evader actions;
+- stage costs;
+- successor states.
+
+This literature supports:
+
+- off-policy policy evaluation;
+- Bellman regression;
+- quadratic function approximation;
+- least-squares Q-function fitting;
+- pursuer and evader gain recovery;
+- iterative policy improvement;
+- data-rank and conditioning requirements;
+- model-free convergence diagnostics.
+
+The disturbance-aware extension adds:
+
+- commanded input histories;
+- realized input histories;
+- persistent command-offset estimation;
+- affine compensation;
+- nominal and disturbed comparisons.
+
+---
+
+## 7. Model-Free Q-Learning Value Iteration
+
+This literature supports the second model-free algorithm.
+
+Q-learning value iteration estimates successive action-value functions from sampled transition data and updates the pursuer and evader policies from the estimated quadratic matrix.
+
+This literature supports:
+
+- model-free Bellman value updates;
+- quadratic Q-function estimation;
+- sample-based value iteration;
+- recovery of minimizing and maximizing policies;
+- differences between Q-learning policy iteration and Q-learning value iteration;
+- convergence and regression diagnostics.
+
+The same disturbance and compensation assumptions are used so that all four algorithms can be evaluated using a common framework.
+
+---
+
+## 8. Persistent Command-Channel Offsets
+
+This literature defines the main disturbance model used in the thesis.
+
+The realized pursuer input is represented as:
+
+```text
+uP_actual(k) = uP_command(k) + bP
+```
+
+The realized evader input is represented as:
+
+```text
+uE_actual(k) = uE_command(k) + bE
+```
+
+The terms `bP` and `bE` represent persistent or slowly varying command-channel offsets.
+
+Possible interpretations include:
+
+- actuator calibration error;
+- steering-center offset;
+- acceleration-command mismatch;
+- repeatable actuator bias;
+- difference between commanded and realized input;
+- constant implementation error during an experiment.
+
+Without compensation, the closed-loop system becomes:
+
+```text
+x(k+1) = (A + Bp*L + Be*K)*x(k)
+         + Bp*bP
+         + Be*bE
+```
+
+This literature supports:
+
+- actuator bias models;
+- constant input disturbances;
+- matched disturbances;
+- unknown affine system terms;
+- command-channel mismatch;
+- persistent steady-state error.
+
+This disturbance model is applied consistently to the model-based and model-free algorithms.
+
+---
+
+## 9. Command-Offset Estimation
+
+This literature supports estimation of the persistent pursuer and evader command offsets.
+
+For the model-based methods, a transition residual can be constructed as:
+
+```text
+r(k) = x(k+1)
+       - A*x(k)
+       - Bp*uP_command(k)
+       - Be*uE_command(k)
+```
+
+Under the persistent-offset model:
+
+```text
+r(k) = Bp*bP + Be*bE + noise(k)
+```
+
+The combined offset vector is:
+
+```text
+bias = [bP; bE]
+```
+
+The combined bias-input matrix is:
+
+```text
+Bbias = [Bp Be]
+```
+
+The calibration relationship becomes:
+
+```text
+r(k) = Bbias*bias + noise(k)
+```
+
+A batch of transition measurements can then be used to estimate the offsets.
+
+This literature supports:
+
+- least-squares parameter estimation;
+- transition-residual methods;
+- constant-disturbance estimation;
+- input-bias identification;
+- batch calibration;
+- measurement-noise sensitivity;
+- identifiability and rank conditions.
+
+For the model-free algorithms, measured commanded and realized inputs may be used without requiring the analytical state-transition matrices in the Q-learning update.
+
+---
+
+## 10. Affine Command Compensation
+
+This literature supports the compensation layer added after bias estimation.
+
+The estimated offsets are denoted by:
+
+```text
+bP_hat
+bE_hat
+```
+
+The compensated commands are:
+
+```text
+uP_command(k) = L*x(k) - bP_hat
+uE_command(k) = K*x(k) - bE_hat
+```
+
+After the true offsets enter the realized input channels:
+
+```text
+uP_actual(k) = L*x(k) - bP_hat + bP
+uE_actual(k) = K*x(k) - bE_hat + bE
+```
+
+The compensated closed-loop system becomes:
+
+```text
+x(k+1) = (A + Bp*L + Be*K)*x(k)
+         + Bp*(bP - bP_hat)
+         + Be*(bE - bE_hat)
+```
+
+When the estimates are exact:
+
+```text
+bP_hat = bP
+bE_hat = bE
+```
+
+the nominal closed-loop dynamics are recovered.
+
+This literature supports:
+
+- offset-free control;
+- actuator pre-compensation;
+- affine feedback laws;
+- disturbance cancellation;
+- residual-error analysis;
+- steady-state error reduction.
+
+---
+
+## 11. Numerical Well-Posedness and Verification
+
+This literature supports the numerical criteria used to verify the four algorithms.
+
+The relevant checks include:
+
+- generalized Riccati residual;
+- policy or value iteration convergence;
+- closed-loop spectral radius;
+- minimizing-player curvature;
+- maximizing-player Schur-complement curvature;
+- reciprocal matrix condition number;
+- invertibility of game matrices;
+- feature-matrix rank;
+- regression conditioning;
+- Bellman residuals;
+- gain-update convergence;
+- exact-compensation verification.
+
+For the model-based algorithms, the nominal closed-loop matrix is:
+
+```text
+Acl = A + Bp*L + Be*K
+```
+
+A stabilizing discrete-time solution requires:
+
+```text
+spectral_radius(Acl) < 1
+```
+
+The minimizing-player control block must have the appropriate positive curvature, while the maximizing-player Schur complement must have the appropriate negative curvature.
+
+These checks are necessary because numerical convergence alone does not guarantee a valid zero-sum saddle solution.
+
+---
+
+## 12. Pursuit-Evasion Interpretation
+
+This literature provides the application interpretation of the zero-sum game.
+
+The pursuer is identified with the minimizing player, while the evader is identified with the maximizing player.
+
+The general interpretation is:
+
+- the pursuer attempts to reduce a relative-state error or reach a capture condition;
+- the evader attempts to increase the same cost or delay capture;
+- the two players have opposing objectives;
+- both players act through their own control channels;
+- command disturbances may affect either player.
+
+Important topics include:
+
+- pursuit-evasion differential games;
+- discrete-time pursuit-evasion;
+- feedback saddle policies;
+- relative-state formulations;
+- capture conditions;
+- evasion objectives;
+- adversarial control.
+
+The current thesis uses pursuit-evasion as the interpretation of the zero-sum dynamic game rather than attempting to reproduce every feature of a full nonlinear vehicle engagement.
+
+---
+
+## 13. Autonomous Ground Vehicles and QCar
+
+This literature provides a future application pathway rather than the central present algorithmic contribution.
+
+A representative vehicle state may be written as:
+
+```text
+vehicle_state_i(k) = [
+    x_position_i(k)
+    y_position_i(k)
+    heading_i(k)
+    speed_i(k)
+]
+```
+
+A representative vehicle input may be written as:
+
+```text
+vehicle_input_i(k) = [
+    acceleration_i(k)
+    steering_i(k)
+]
+```
+
+For a vehicle-oriented implementation, the scalar offsets can be replaced by vectors:
+
+```text
+bP = [
+    pursuer_acceleration_offset
+    pursuer_steering_offset
+]
+```
+
+```text
+bE = [
+    evader_acceleration_offset
+    evader_steering_offset
+]
+```
+
+This literature supports:
+
+- kinematic bicycle models;
+- dynamic bicycle models;
+- steering and acceleration command channels;
+- actuator constraints;
+- QCar and QLabs interfaces;
+- future hardware calibration;
+- future nonlinear validation.
+
+The current thesis does not claim completed QCar or QLabs implementation.
 
 ---
 
@@ -256,92 +608,128 @@ Graph-based multi-agent pursuit–evasion provides a natural future direction in
 
 | Thesis Component | Supporting Literature | Purpose |
 |---|---|---|
-| Chapter 1: Motivation and problem framing | Autonomous driving, ITS, multi-agent control | Establishes why vehicle interaction is a meaningful control problem. |
-| Chapter 2: Literature review | All categories in this directory | Establishes the research gap and the literature-supported research direction. |
-| Chapter 3: Vehicle modeling | Kinematic bicycle, dynamic bicycle, QCar, QLabs | Justifies the selected two-vehicle state-space model. |
-| Chapter 4: Model-based controller | Pursuit–evasion, LQ games, Riccati theory | Supports the finite-horizon saddle-point controller. |
-| Chapter 5: Fitted-Q recovery | Q-learning, Bellman regression, least-squares methods | Supports data-driven recovery from sampled transitions. |
-| Chapter 6: Robustness studies | Safe RL, robust control, uncertainty analysis | Supports mismatch, delay, noise, and saturation experiments. |
-| Future work | Graph theory, multi-agent control, dynamic vehicle models | Supports extensions to multi-vehicle teams and higher-fidelity vehicle dynamics. |
+| Problem formulation | Zero-sum games and pursuit-evasion | Defines the minimizing pursuer and maximizing evader. |
+| Model-based policy iteration | Riccati theory, Lyapunov equations, policy iteration | Supports the first model-based algorithm. |
+| Model-based value iteration | Dynamic programming and generalized Riccati updates | Supports the second model-based algorithm. |
+| Model-free policy iteration | Quadratic Q-learning and Bellman regression | Supports the first model-free algorithm. |
+| Model-free value iteration | Sample-based value iteration and Q-function approximation | Supports the second model-free algorithm. |
+| Disturbance model | Actuator bias and persistent input disturbances | Defines command-channel offsets. |
+| Bias estimation | Least squares, residual estimation, parameter identification | Supports command-offset calibration. |
+| Compensation | Offset-free and affine control | Supports bias cancellation. |
+| Numerical validation | Numerical linear algebra and game solvability | Supports stability, curvature, rank, and conditioning checks. |
+| Future vehicle application | Ground-vehicle models, QCar, QLabs | Supports later nonlinear and hardware-oriented work. |
 
 ---
 
 ## Central Research Gap
 
-The literature identifies a gap between three research directions:
+Established model-based and model-free zero-sum control algorithms provide policy-iteration and value-iteration solutions for nominal linear dynamic games.
 
-1. Pursuit–evasion studies often use abstract agent dynamics, guidance laws, or low-order motion models.
-2. Autonomous-vehicle studies often use realistic vehicle models but focus on tracking, platooning, lane keeping, cooperative driving, or collision avoidance rather than adversarial pursuit–evasion.
-3. Reinforcement-learning pursuit–evasion studies often use complex simulation environments but do not compare learned policies with an exact linear-quadratic game solution on the same model.
+However, these methods are commonly studied under idealized input assumptions in which commanded and realized player inputs are identical.
 
-This thesis addresses that gap by developing a shared, model-centered pursuit–evasion benchmark with:
+Persistent command-channel offsets can introduce affine closed-loop errors even when the nominal pursuer and evader policies remain stabilizing.
 
-- A literature-supported kinematic bicycle vehicle model.
-- Two autonomous ground vehicles.
-- A finite-horizon Riccati saddle-point controller.
-- A fitted-Q recovery method using sampled nominal transitions.
-- Common state definitions, capture conditions, dynamics, and performance metrics.
-- Nonlinear actuator-limited rollout evaluation.
-- QCar-relevant perturbation studies.
-- A defined pathway toward QLabs and future QCar implementation.
+The literature does not commonly provide a unified framework that applies the same disturbance model, bias-estimation procedure, compensation law, and numerical evaluation criteria to:
+
+1. Model-based policy iteration.
+2. Model-based value iteration.
+3. Model-free Q-learning policy iteration.
+4. Model-free Q-learning value iteration.
+
+This thesis addresses that gap by extending the four established methods with:
+
+- persistent pursuer and evader command offsets;
+- command-offset estimation;
+- affine compensation;
+- matched nominal and disturbed simulations;
+- common numerical verification;
+- reproducible MATLAB implementation.
+
+The underlying policy-iteration, value-iteration, and Q-learning methods remain established algorithms. The contribution is their matched disturbance-aware extension and evaluation within a zero-sum pursuit-evasion framework.
 
 ---
 
 ## Recommended Literature Folder Structure
 
-    Literature/
-    ├── 01_Autonomous_Driving_and_ITS/
-    ├── 02_Ground_Vehicle_Models/
-    ├── 03_Kinematic_and_Dynamic_Bicycle_Models/
-    ├── 04_Pursuit_Evasion_and_Differential_Games/
-    ├── 05_Linear_Quadratic_Dynamic_Games/
-    ├── 06_Reinforcement_Learning_and_Fitted_Q/
-    ├── 07_Safe_and_Robust_Control/
-    ├── 08_QCar_and_QLabs/
-    ├── 09_Graph_Based_Multi_Agent_Control/
-    ├── references.bib
-    └── literature_notes.md
+```text
+Literature/
+├── 01_Zero_Sum_Linear_Quadratic_Games/
+├── 02_Generalized_Algebraic_Riccati_Equations/
+├── 03_Model_Based_Policy_Iteration/
+├── 04_Model_Based_Value_Iteration/
+├── 05_Quadratic_Q_Learning_Foundations/
+├── 06_Q_Learning_Policy_Iteration/
+├── 07_Q_Learning_Value_Iteration/
+├── 08_Persistent_Input_Bias_and_Disturbances/
+├── 09_Bias_Estimation_and_Identification/
+├── 10_Affine_and_Offset_Free_Compensation/
+├── 11_Numerical_Well_Posedness_and_Stability/
+├── 12_Pursuit_Evasion_Games/
+├── 13_Autonomous_Vehicles_QCar_and_QLabs/
+├── references.bib
+└── literature_notes.md
+```
 
 ---
 
 ## Citation and Source Management
 
-All claims in the thesis should be traceable to a peer-reviewed paper, textbook, technical report, or official platform source.
+All technical claims in the thesis should be traceable to a peer-reviewed paper, textbook, technical report, dissertation, or official platform source.
 
 Recommended practice:
 
-- Use peer-reviewed papers for scientific claims.
-- Use textbooks for foundational control and game-theory results.
-- Use official Quanser and MathWorks documentation for platform and software details.
-- Verify author names, publication year, venue, page numbers, and DOI information before final submission.
-- Keep the BibTeX database synchronized with the PDF library.
-- Record short notes explaining how each source supports a thesis decision.
-
-Platform documentation is useful for QCar and QLabs implementation details, but it should be distinguished from peer-reviewed research evidence.
+- use textbooks for foundational zero-sum game and Riccati theory;
+- use peer-reviewed papers for policy-iteration, value-iteration, and Q-learning claims;
+- use primary sources for the four algorithms;
+- use estimation and control literature for the disturbance-aware extension;
+- use numerical-analysis references for conditioning and stability claims;
+- use official Quanser and MathWorks documentation only for platform and software details;
+- distinguish original algorithm sources from later implementation or application papers;
+- verify author names, publication year, venue, page numbers, and DOI information;
+- keep the BibTeX database synchronized with the PDF library;
+- record how each source supports a specific thesis equation, algorithm, or design decision.
 
 ---
 
 ## Scope Notes
 
-This literature collection supports a controlled engineering benchmark.
+This literature collection supports a theoretical and computational zero-sum control study.
 
-It does not claim to solve all autonomous-driving interaction problems, reproduce a full traffic simulator, or provide completed physical QCar validation.
+The current thesis focuses on:
 
-The thesis focuses on:
+- one minimizing pursuer and one maximizing evader;
+- discrete-time linear zero-sum systems;
+- generalized Riccati policy iteration;
+- generalized Riccati value iteration;
+- quadratic Q-learning policy iteration;
+- quadratic Q-learning value iteration;
+- persistent command-channel offsets;
+- offset estimation;
+- affine compensation;
+- MATLAB-based validation.
 
-- One pursuer and one evader.
-- Reduced-order car-like vehicle dynamics.
-- A fixed local linearization for the finite-horizon game.
-- A fitted-Q recovery study under matched nominal transitions.
-- Execution-side perturbation studies.
-- A future implementation path toward QLabs and QCar hardware.
+The current thesis does not claim:
+
+- invention of the original four algorithms;
+- completed physical QCar experiments;
+- completed QLabs deployment;
+- deep actor-critic reinforcement learning;
+- global nonlinear pursuit-evasion optimality;
+- a full autonomous-driving traffic simulator;
+- multi-pursuer or multi-evader coordination;
+- high-fidelity tire or suspension dynamics.
 
 ---
 
 ## Associated Thesis
 
-    Blaine Christopher Swieder
-    Model-Based and Q-Learning-Based Pursuit–Evasion Control of Autonomous Ground Vehicles Using QCar-Compatible State-Space Models
-    Master of Science Thesis
-    Tennessee Technological University
-    August 2026
+```text
+Blaine Christopher Swieder
+
+Disturbance-Aware Model-Based and Model-Free Zero-Sum Pursuit-Evasion Control:
+Theory, Algorithm Development, and MATLAB Validation
+
+Master of Science Thesis
+Tennessee Technological University
+2026
+```
