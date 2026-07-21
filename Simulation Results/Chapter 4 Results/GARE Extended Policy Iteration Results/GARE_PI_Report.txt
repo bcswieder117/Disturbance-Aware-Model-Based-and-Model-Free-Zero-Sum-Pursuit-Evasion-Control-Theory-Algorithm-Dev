@@ -1,0 +1,92 @@
+GARE POLICY ITERATION WITH DISTURBANCE-AWARE EXTENSION
+============================================================
+
+NOMINAL POLICY ITERATION
+------------------------------------------------------------
+Converged: 1
+Iterations: 4
+Closed-loop spectral radius: 9.8197072726778423e-01
+GARE residual: 6.4047796145037552e-15
+Normalized GARE residual: 2.2076234623773726e-16
+Lyapunov residual: 4.3512038206593176e-15
+Normalized Lyapunov residual: 1.4997892546249366e-16
+Game-matrix reciprocal condition: 5.6579379000334307e-01
+Pursuer curvature minimum: 1.7618403432497336e+00
+Evader curvature maximum: -9.9850999037050348e-01
+
+Pursuer Gain L:
+8.3637067998733786e-02 9.5632997049759971e-02 -6.6082613681227642e-02
+
+Evader Gain K:
+1.4674460547005752e-01 1.2359969651334055e-01 -7.5490580711654501e-05
+
+Value Matrix P:
+1.5438224019674164e+01 1.2334195878034048e+01 -7.4367320363751977e-03
+1.2334195878034048e+01 1.5525907103294101e+01 -6.5649487552046151e-03
+-7.4367320363751977e-03 -6.5649487552046151e-03 1.0101039794975823e+00
+
+OFFSET CALIBRATION
+------------------------------------------------------------
+True pursuer offset: 4.0000000000000001e-02
+Estimated pursuer offset: 4.0001367029008701e-02
+Pursuer percentage error: 0.00341757 %
+True evader offset: -1.0000000000000000e-02
+Estimated evader offset: -1.0287437552674803e-02
+Evader percentage error: 2.87437553 %
+Theoretical pursuer estimate std: 7.2914162961543582e-06
+Theoretical evader estimate std: 6.6388179144464046e-04
+Monte Carlo pursuer individual std: 7.5664709921787630e-06
+Monte Carlo evader individual std: 6.4159131655920740e-04
+Monte Carlo pursuer mean SE: 2.3927282184878976e-07
+Monte Carlo evader mean SE: 2.0288898873132004e-05
+
+EXECUTION CASES
+------------------------------------------------------------
+
+Nominal
+State-cost component: 3.2424399541603289e+03
+Pursuer-cost component: 4.4282978488802172e+01
+Evader-cost component: 1.1686412028924116e+02
+Signed game cost: 3.1698588123598906e+03
+Signed cost change: 0.0000000000000000e+00
+Maximum cost-weighted deviation: 0.0000000000000000e+00
+Maximum pursuer channel error: 1.1102230246251565e-16
+Maximum evader channel error: 2.2204460492503131e-16
+Maximum analytical mismatch: 0.0000000000000000e+00
+
+Without Compensation
+State-cost component: 3.2354801192709956e+03
+Pursuer-cost component: 4.9952507770734840e+01
+Evader-cost component: 1.1422701149396980e+02
+Signed game cost: 3.1712056155477603e+03
+Signed cost change: 1.3468031878696820e+00
+Maximum cost-weighted deviation: 4.1286288367252746e-02
+Maximum pursuer channel error: 4.0000000000000036e-02
+Maximum evader channel error: 1.0000000000000231e-02
+Maximum analytical mismatch: 2.6869625713693337e-15
+
+Estimated Compensation
+State-cost component: 3.2425066696386430e+03
+Pursuer-cost component: 4.4283702791286032e+01
+Evader-cost component: 1.1693160904581967e+02
+Signed game cost: 3.1698587633841080e+03
+Signed cost change: -4.8975782647175947e-05
+Maximum cost-weighted deviation: 1.1349945964924220e-04
+Maximum pursuer channel error: 1.3670290087697268e-06
+Maximum evader channel error: 2.8743755267512938e-04
+Maximum analytical mismatch: 4.6846024930539204e-15
+
+Exact Compensation
+State-cost component: 3.2424399541603289e+03
+Pursuer-cost component: 4.4282978488802172e+01
+Evader-cost component: 1.1686412028924116e+02
+Signed game cost: 3.1698588123598906e+03
+Signed cost change: 0.0000000000000000e+00
+Maximum cost-weighted deviation: 1.3877787807814457e-17
+Maximum pursuer channel error: 1.1102230246251565e-16
+Maximum evader channel error: 2.2204460492503131e-16
+Maximum analytical mismatch: 1.3877787807814457e-17
+
+Estimated state-error reduction: 99.72509164 %
+Exact state-error reduction: 100.00000000 %
+Maximum analytical mismatch: 4.6846024930539204e-15
