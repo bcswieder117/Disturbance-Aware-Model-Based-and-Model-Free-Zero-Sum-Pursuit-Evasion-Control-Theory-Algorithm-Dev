@@ -1,0 +1,29 @@
+GARE VALUE ITERATION THESIS REPORT
+============================================
+Iterations: 633
+Converged: 1
+Closed-loop spectral radius: 0.981970727267758
+GARE residual: 9.44370284461542e-11
+Normalized GARE residual: 3.25509092087534e-12
+Lyapunov residual: 9.44396515629468e-11
+Normalized Lyapunov residual: 3.25518133544891e-12
+Game-matrix reciprocal condition number: 0.565793790003569
+Pursuer curvature minimum: 1.76184034324956
+Evader curvature maximum: -0.998509990370631
+Bias-map rank: 2
+Bias-map condition number: 91.049989020034
+Pursuer true bias: 0.04
+Pursuer estimated bias: 0.0400013670290087
+Evader true bias: -0.01
+Evader estimated bias: -0.0102874375526748
+Maximum uncompensated deviation: 0.0412862883674501
+Maximum estimated deviation: 0.000113499459648931
+Maximum exact deviation: 1.99840144432528e-15
+Maximum state-error reduction percent: 99.7250916366257
+Uncompensated analytical mismatch: 3.14920031894575e-15
+Estimated analytical mismatch: 5.1457817310612e-15
+Exact trajectory error: 1.99840144432528e-15
+Nominal signed cost: 3169.85881235989
+Uncompensated signed cost: 3171.20561554657
+Estimated signed cost: 3169.85876338411
+Exact signed cost: 3169.85881235989
